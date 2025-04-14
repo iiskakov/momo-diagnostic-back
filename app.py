@@ -3,6 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import ell
 from back import assess_math_skills, analyze_assessment, create_learning_path 
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize ELL
 ell.init(store='./logdir', autocommit=True)
@@ -10,10 +15,13 @@ ell.init(store='./logdir', autocommit=True)
 # Initialize FastAPI app
 app = FastAPI()
 
+# Get allowed origins from environment or use default
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 # Add CORS middleware to handle all CORS-related issues
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Replace with your frontend's origin if needed
+    allow_origins=allowed_origins,  # Use environment variable for production
     allow_credentials=True,  # Set to False if you don't need credentials
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,7 +33,7 @@ async def chat_options():
     return JSONResponse(
         content={},
         headers={
-            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Origin": ",".join(allowed_origins),
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
         }
@@ -54,7 +62,7 @@ async def chat(message: dict):
                 }
             },
             headers={
-                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Origin": ",".join(allowed_origins),
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type",
             }
@@ -80,7 +88,7 @@ async def analyze_results(data: dict):
         return JSONResponse(
             content={"analysis": analysis},
             headers={
-                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Origin": ",".join(allowed_origins),
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type",
             }
@@ -105,7 +113,7 @@ async def learning_path_handler(data: dict):
         return JSONResponse(
             content={"config": config},
             headers={
-                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Origin": ",".join(allowed_origins),
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type",
             }
@@ -113,3 +121,8 @@ async def learning_path_handler(data: dict):
     except Exception as e:
         # Handle exceptions with appropriate HTTP status code
         raise HTTPException(status_code=500, detail=str(e))
+
+# Add a simple health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
