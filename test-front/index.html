@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Skills Assessment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        #question-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            min-height: 100px;
+        }
+        
+        .button-container {
+            display: grid;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loading::after {
+            content: "Loading...";
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: "Loading.  "; }
+            40% { content: "Loading.. "; }
+            60% { content: "Loading..."; }
+            80% { content: "Loading.. "; }
+            100% { content: "Loading.  "; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Math Skills Assessment</h1>
+    <div id="question-container">
+        Click Start to begin the assessment.
+    </div>
+    <div class="loading" id="loading-indicator"></div>
+    <div class="button-container" id="button-container">
+        <button onclick="startAssessment()">Start</button>
+    </div>
+
+    <script>
+        let messageHistory = [];
+        const API_URL = 'http://0.0.0.0:8001/chat';
+        
+        async function startAssessment() {
+            messageHistory = [];
+            await sendMessage("I want to assess my child's math skills");
+        }
+        
+        async function sendMessage(content) {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const buttonContainer = document.getElementById('button-container');
+            const questionContainer = document.getElementById('question-container');
+            
+            // Show loading state
+            loadingIndicator.style.display = 'block';
+            buttonContainer.style.display = 'none';
+            
+            try {
+                messageHistory.push({
+                    role: "user",
+                    content: content
+                });
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    mode: 'cors',
+                    body: JSON.stringify({ history: messageHistory })
+                });
+                
+                const data = await response.json();
+                messageHistory.push(data.response);
+                
+                // Try to parse the response content as JSON
+                let parsedContent;
+                try {
+                    parsedContent = JSON.parse(data.response.content);
+                } catch (e) {
+                    console.error('Failed to parse response as JSON');
+                    questionContainer.textContent = data.response.content;
+                    return;
+                }
+                
+                // Update the question
+                questionContainer.textContent = parsedContent.instruction;
+                
+                // Create answer buttons
+                buttonContainer.innerHTML = '';
+                Object.entries(parsedContent.possible_answers).forEach(([key, value]) => {
+                    const button = document.createElement('button');
+                    button.textContent = `${key.toUpperCase()}: ${value}`;
+                    button.onclick = () => sendMessage(`${key.toUpperCase()}`);
+                    buttonContainer.appendChild(button);
+                });
+                
+            } catch (error) {
+                console.error('Error:', error);
+                questionContainer.textContent = 'An error occurred. Please try again.';
+            } finally {
+                // Hide loading state
+                loadingIndicator.style.display = 'none';
+                buttonContainer.style.display = 'grid';
+            }
+        }
+    </script>
+</body>
+</html> 
